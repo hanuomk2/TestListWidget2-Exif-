@@ -1,0 +1,62 @@
+#+TITLE:	README for TestListWidget2(Exif)
+#+AUTHOR:	hanuomk2(odaba)
+#+DATE:		2019-04-21
+
+* TestListWidget2改(Exifデータ対応)
+
+Qt(C++)による、フォルダ内の画像ファイルをリスト表示し、
+リストから選択した画像を拡大表示するよくあるビューアを更新しました
+(jpegファイルでExifデータにサムネイル画像がある場合、
+listWidgetにサムネイル画像を表示します)
+
+** 謝辞
+
+[[http://dsas.blog.klab.org/archives/52123322.html][Klab DSAS開発者の部屋: Exif データにアクセスするコードを自作してみる]]
+にて、公開されているソースコードを移植しました。
+
+先人の方々のご好意で本コードを公開できました。本当にありがとうございます。
+
+** 環境
+
+ - OS: 		Microsoft Windows 10 pro 64bit
+ - IDE: 	QtCreator 4.8.2 
+ - Qt(Ver.):Qt 5.12.1(mingw 7.3.0 64ビット)
+
+** 使い方
+
+適当なフォルダにzipファイルを展開し、
+Qt Creatorで"TestListWidget.pro"ファイルを開き、実行して下さい。
+
+** ライセンス
+
+Apache License 2.0
+(ソースコードは、Apache Licenseです。
+ もちろん、Qtを使用しているので、コンパイルして再配布する場合、
+ ライブラリ等Qtの部分はLGPL 3.0となります)
+
+** その他
+
+ - Exifデータにサムネイル画像がある場合に、listWidgetにサムネイル画像を表示します。
+ - ExifデータのOrientation情報を基に画像の向きを正しています。
+
+ - "exif.c"ファイルの構造体"_tagNode", "_ifdTable"をコメントアウトし、
+   "exif.h"ファイルに加えました。
+
+ - QGraphicsSceneを承継して、CustomSceneを作成しています(マウスイベントを使用するため)。
+ 
+ - listWidgetで選択した画像は、graphicsViewに表示後、
+   QClipboard::setPixmap()でクリックボードにそのまま貼付けしています。
+
+ - マウスイベント(mousePressEvent, mouseMoveEvent, mouseReleaseEvent)で
+   mousePress点とmouseRelease点の矩形範囲で選択画像をキャプチャし、
+   QClipboard::setPixmap()でクリックボードに貼付けしています。
+   
+ - 矩形範囲を囲む線は、黒線と白線とが交互に連続する線としたかったため、
+   テクスチャを使用しています(黒線だけだと背景が黒い場合に見えないため。
+   白線だけでも背景が白い場合、然り)。
+
+ - QComboBoxで選択画像のスケールを変更できます。
+
+** 画面
+
+ [[file:TestListWidget2(Exif).jpg]] 

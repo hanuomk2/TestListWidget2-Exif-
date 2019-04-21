@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/Folder(UP).png</file>
+        <file>images/Folder.png</file>
+        <file>images/dir.png</file>
+        <file>images/DashLine.png</file>
+    </qresource>
+</RCC>

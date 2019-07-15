@@ -21,19 +21,22 @@ class Widget : public QWidget
 public:
     explicit Widget(QWidget *parent = nullptr);
     ~Widget();
+    void collectImage(QStringList strlist);
 
 private slots:
-    void collectImage();
     void selectImage();
     void selectComboBox(QString str);
     void openFolderDialog();
     void upFolderToParent();
-    void getExifThumbnailImage(int num, const QString &strPATH);
+    bool getExifThumbnailImage(int num, const QString &strPATH);
+    void collectImage();
+    void collectImage(QString strPath);
 
 private:
     Ui::Widget *ui;
     QString strDirPATH, strImagePATH;
     CustomScene* scene;
+    bool flagCmdlImage = false;
 };
 
 #endif // WIDGET_H

@@ -1,6 +1,6 @@
-#+TITLE:	README for TestListWidget2(Exif)
+#+TITLE:	README for TestListWidget2
 #+AUTHOR:	hanuomk2(odaba)
-#+DATE:		2019-04-21
+#+DATE:		2019-03-25
 
 * TestListWidget2改(Exifデータ対応)
 
@@ -57,6 +57,14 @@ Apache License 2.0
 
  - QComboBoxで選択画像のスケールを変更できます。
 
+   
+ - collectImage()をオーバライドして、コマンドラインの引数にフォルダまたは画像ファイル群を指定すると
+   (exeファイルへのフォルダまたは画像ファイル群のドロップでも)、
+   指定したフォルダ内の画像ファイルまたは指定した画像ファイル群を
+   listWidgetに表示する様に変更しました。
+
+ - コマンドラインの引数に画像ファイル群を指定した場合、lineEdit等のUIはdisable表示にしています。
+
 ** 画面
 
- [[file:TestListWidget2(Exif).jpg]] 
+ [[file:TestListWidget2.jpg]] 

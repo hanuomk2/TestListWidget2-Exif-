@@ -35,7 +35,7 @@ void CustomScene::SetPixmap(const QString &strDir, const QString &strScale)
 
     QBrush brush(Qt::TexturePattern);                   //DashLineをpngファイルから作成
     brush.setTextureImage(QImage(":/images/DashLine.png"));
-    QPen pen(brush, 3);
+    QPen pen(brush, 2);
     rect_item = addRect(0, 0, 0, 0, pen);               //rect_itemを初期化
 }
 

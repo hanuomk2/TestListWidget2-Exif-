@@ -1,6 +1,5 @@
 #include <QStringList>
 #include <QListWidgetItem>
-#include <QDir>
 #include <QFileDialog>
 #include <QImage>
 #include <QPixmap>
@@ -24,6 +23,11 @@ Widget::Widget(QWidget *parent) :
 
     //lineEditの初期化
     ui->lineEdit->setText(PATH);
+
+    //listWidgetの初期化
+    ui->listWidget->setAcceptDrops(false);
+    ui->listWidget->setDragEnabled(false);
+    ui->listWidget->setDragDropMode( QAbstractItemView::DragDropMode::NoDragDrop);
 
     //grahicsViewの初期化
     scene = new CustomScene(this);
@@ -61,58 +65,6 @@ Widget::~Widget()
     delete ui;
 }
 
-//listWidgetへの画像(フォルダ含む)の追加
-void Widget::collectImage()
-{
-    QString strDir = ui->lineEdit->text();
-    QDir dir(strDir);
-    QStringList listDir;
-    QStringList listImage;
-    QStringList listFilter1, listFilter2;
-    listFilter1 << "*.jpg" << "*.jpeg";
-    listFilter2 << "*.bmp" << "*.gif" << "*.png";
-
-    if(dir.exists())
-    {
-        strDirPATH = strDir;
-
-        ui->listWidget->clear();
-        ui->listWidget->setIconSize(QSize(ICONWIDTH, ICONHEIGHT));
-
-        // フォルダのパス、アイコン(固定)をlistWidgetに登録する
-        listDir = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-        for(int i=0; i < listDir.size(); i++)
-        {
-            strDir = listDir.at(i);
-            ui->listWidget->addItem(strDir);
-            QIcon mIcon(":/images/dir.png");
-            ui->listWidget->item(i)->setIcon(mIcon);
-        }
-
-        // jpg, jpegファイルのパス、アイコンをlistWidgetに登録する
-        int startNum = listDir.size();
-        listImage = dir.entryList(listFilter1);
-        for(int i=0; i < listImage.size(); i++)
-        {
-            strDir = listImage.at(i);
-            ui->listWidget->insertItem(startNum+i, strDir);
-            getExifThumbnailImage(startNum+i, strDirPATH + QDir::separator() + strDir);
-        }
-
-        // bmp, gif, gifファイルのパス、アイコンをlistWidgetに登録する
-        startNum = listDir.size() + listImage.size();
-        listImage = dir.entryList(listFilter2);
-        for(int i=0; i < listImage.size(); i++)
-        {
-            strDir = listImage.at(i);
-            ui->listWidget->insertItem(startNum+i, strDir);
-            QIcon mIcon(strDirPATH + QDir::separator() + strDir);
-            ui->listWidget->item(startNum+i)->setIcon(mIcon);
-        }
-    }
-    else ui->lineEdit->setText(strDirPATH);
-}
-
 //listWidgetで画像(フォルダ含む)を選択
 void Widget::selectImage()
 {
@@ -130,7 +82,8 @@ void Widget::selectImage()
     //アイテムが画像の場合、graphicsViewに画像を表示
     else
     {
-        strImagePATH = strDir;
+        if(flagCmdlImage) strImagePATH = item->text();
+        else strImagePATH = strDir;
         selectComboBox(ui->comboBox->currentText());
     }
 }
@@ -174,7 +127,7 @@ void Widget::upFolderToParent()
     }
 }
 
-void Widget::getExifThumbnailImage(int num, const QString &strPATH)
+bool Widget::getExifThumbnailImage(int num, const QString &strPATH)
 {
     //構造体、変数等の初期化
     void **ifdArray = nullptr;
@@ -211,14 +164,7 @@ void Widget::getExifThumbnailImage(int num, const QString &strPATH)
         break;
     }
 
-    if (!ifdArray)
-    {
-        // Thumbnailがなかった場合等
-        QIcon mIcon(strPATH);
-        ui->listWidget->item(num)->setIcon(mIcon);
-
-        return;
-    }
+    if (!ifdArray) return false;                    // IDFテーブルがなかった場合等
 
      /* 1st IFDにサムネイル画像があれば、それを表示する **************************************/
      unsigned char *p;
@@ -270,11 +216,127 @@ void Widget::getExifThumbnailImage(int num, const QString &strPATH)
          // QPixmap pixmap = QPixmap::fromImage(image);
          QIcon mIcon(QPixmap::fromImage(image));
          ui->listWidget->item(num)->setIcon(mIcon);
+
+         // free IFD table array
+         freeIfdTableArray(ifdArray);
      }
      else
      {
          qDebug("getThumbnailDataOnIfdTableArray: ret=%d\n", result);
+         // Thumbnailがなかった場合等
+
+         // free IFD table array
+         freeIfdTableArray(ifdArray);
+
+         return false;
      }
-    // free IFD table array
-    freeIfdTableArray(ifdArray);
+
+    return true;
 }
+
+//listWidgetへの画像(フォルダ含む)の追加(コマンドラインで引数がある場合:exeアイコンへのフォルダ・ファイルのドロップを含む)
+void Widget::collectImage(QStringList strlist)
+{
+    QString strDir = strlist.at(1);
+    QDir dir(strDir);
+
+    ui->listWidget->clear();
+    ui->listWidget->setIconSize(QSize(ICONWIDTH, ICONHEIGHT));
+
+    if(dir.exists()) {                                  // コマンドラインでフォルダを引数にして起動した場合
+        ui->lineEdit->setText(strDir);
+        collectImage(strDir);
+    }
+    else {
+        flagCmdlImage = true;                           // コマンドラインで画像を引数にして起動した場合
+        ui->lineEdit->setEnabled(false);                // UIはdisable表示
+        ui->btnFolderDialog->setEnabled(false);
+        ui->btnFolderToParent->setEnabled(false);
+        ui->btnEnterKey->setEnabled(false);
+
+        int count = 0;
+        for(int i=1; i < strlist.size(); i++) {
+            QFileInfo fileinfo(strlist.at(i));
+            qDebug("ImagePath(%d): %s", i, strlist.at(i).toUtf8().data());
+            if(fileinfo.isFile()) {
+                QString strcmp = fileinfo.suffix();
+                if(strcmp.compare("jpg", Qt::CaseInsensitive) ||
+                   strcmp.compare("jpeg", Qt::CaseInsensitive)) {
+                    ui->listWidget->insertItem(count, strlist.at(i));
+                    if(!getExifThumbnailImage(count, strlist.at(i))) {
+                        QIcon mIcon(strlist.at(i));
+                        ui->listWidget->item(count)->setIcon(mIcon);
+                    }
+                    count++;
+                }
+                else if(strcmp.compare("bmp", Qt::CaseInsensitive) ||
+                        strcmp.compare("gif", Qt::CaseInsensitive) ||
+                        strcmp.compare("png", Qt::CaseInsensitive)) {
+                    ui->listWidget->insertItem(count, strlist.at(i));
+                    QIcon mIcon(strlist.at(i));
+                    ui->listWidget->item(count)->setIcon(mIcon);
+                    count++;
+                }
+            }
+        }
+    }
+}
+
+//listWidgetへの画像(フォルダ含む)の追加
+void Widget::collectImage()
+{
+    collectImage(ui->lineEdit->text());
+}
+
+void Widget::collectImage(QString strFolderPath)
+{
+    strDirPATH = strFolderPath;
+
+    QDir dir(strDirPATH);
+    QStringList listDir;
+    QStringList listImage;
+    QString strDir;
+    QString strImage;
+
+    QStringList listFilter1, listFilter2;
+    listFilter1 << "*.jpg" << "*.jpeg";
+    listFilter2 << "*.bmp" << "*.gif" << "*.png";
+
+    ui->listWidget->clear();
+    ui->listWidget->setIconSize(QSize(ICONWIDTH, ICONHEIGHT));
+
+    // フォルダのパス、アイコン(固定)をlistWidgetに登録する
+    listDir = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for(int i=0; i < listDir.size(); i++)
+    {
+        strDir = listDir.at(i);
+        ui->listWidget->addItem(strDir);
+        QIcon mIcon(":/images/dir.png");
+        ui->listWidget->item(i)->setIcon(mIcon);
+    }
+
+    // jpg, jpegファイルのパス、アイコンをlistWidgetに登録する
+    int startNum = listDir.size();
+    listImage = dir.entryList(listFilter1);
+    for(int i=0; i < listImage.size(); i++)
+    {
+        strImage = listImage.at(i);
+        ui->listWidget->insertItem(startNum+i, strImage);
+        if(!getExifThumbnailImage(startNum+i, strDirPATH + "/" + strImage)) {
+            QIcon mIcon(strDirPATH + "/" + strImage);
+            ui->listWidget->item(startNum+i)->setIcon(mIcon);
+        }
+    }
+
+    // bmp, gif, gifファイルのパス、アイコンをlistWidgetに登録する
+    startNum = listDir.size() + listImage.size();
+    listImage = dir.entryList(listFilter2);
+    for(int i=0; i < listImage.size(); i++)
+    {
+        strImage = listImage.at(i);
+        ui->listWidget->insertItem(startNum+i, strImage);
+        QIcon mIcon(strDirPATH + "/" + strImage);
+        ui->listWidget->item(startNum+i)->setIcon(mIcon);
+    }
+}
+
